@@ -1,0 +1,337 @@
+class HeroDatabase:
+    def __init__(self):
+        self.heroes = {}
+        self.crimes = []
+        self.missions = []
+
+    def add_hero(self, name, age, sex, physical_features, powers, strength, popularity, status, wins=0, losses=0):
+        """
+        Adiciona um novo herói ao banco de dados.
+
+        Parâmetros:
+        - name (str): Nome do herói.
+        - age (int): Idade do herói.
+        - sex (str): Sexo do herói.
+        - physical_features (str): Descrição das características físicas.
+        - powers (list): Lista dos poderes do herói.
+        - strength (int): Nível de força (0-100).
+        - popularity (int): Nível de popularidade (0-100).
+        - status (str): Status atual do herói (Ativo, Inativo, Banido).
+        - wins (int, opcional): Número de vitórias (padrão: 0).
+        - losses (int, opcional): Número de derrotas (padrão: 0).
+
+        Retorna:
+        None
+        """
+        self.heroes[name] = {
+            "age": age,
+            "sex": sex,
+            "physical_features": physical_features,
+            "powers": powers,
+            "strength": strength,
+            "popularity": popularity,
+            "status": status,
+            "battle_history": {"wins": wins, "losses": losses},
+        }
+
+    def remove_hero(self, name):
+        if name in self.heroes:
+            del self.heroes[name]
+            print(f"Hero '{name}' has been removed.")
+        else:
+            print(f"Hero '{name}' not found.")
+
+    def modify_hero(self, name, **kwargs):
+        if name in self.heroes:
+            for key, value in kwargs.items():
+                if key in self.heroes[name]:
+                    self.heroes[name][key] = value
+                elif key in self.heroes[name]["battle_history"]:
+                    self.heroes[name]["battle_history"][key] = value
+            self.update_status(name)
+            print(f"Hero '{name}' has been updated.")
+        else:
+            print(f"Hero '{name}' not found.")
+
+    def view_hero(self, name):
+        if name in self.heroes:
+            return self.heroes[name]
+        else:
+            print(f"Hero '{name}' not found.")
+
+    def list_heroes(self, by=None, value=None):
+        if by and value:
+            return {name: details for name, details in self.heroes.items() if details.get(by) == value}
+        return self.heroes
+
+    def update_status(self, name):
+        hero = self.heroes[name]
+        if hero["popularity"] < 20:
+            hero["status"] = "Banido"
+        elif hero["battle_history"]["losses"] > hero["battle_history"]["wins"] * 2:
+            hero["status"] = "Inativo"
+        else:
+            hero["status"] = "Ativo"
+
+    def add_crime(self, crime_name, description, date, hero_name, severity, hidden=False):
+        """
+        Registra um crime cometido por um herói no banco de dados.
+
+        Parâmetros:
+        - crime_name (str): Nome do crime.
+        - description (str): Descrição detalhada do crime.
+        - date (str): Data do crime.
+        - hero_name (str): Nome do herói responsável.
+        - severity (int): Gravidade do crime (1-10).
+        - hidden (bool, opcional): Indica se o crime está oculto (padrão: False).
+
+        Funcionalidade:
+        - Reduz a popularidade do herói com base na gravidade do crime.
+        - O crime demonstra como eventos externos afetam os atributos do herói.
+
+        Retorna:
+        None
+        """
+        if hero_name in self.heroes:
+            crime = {
+                "crime_name": crime_name,
+                "description": description,
+                "date": date,
+                "hero": hero_name,
+                "severity": severity,
+                "hidden": hidden
+            }
+            self.crimes.append(crime)
+            # Decrease popularity based on severity
+            self.heroes[hero_name]["popularity"] = max(0, self.heroes[hero_name]["popularity"] - severity * 2)
+            print(f"Crime '{crime_name}' added for hero '{hero_name}'.")
+        else:
+            print(f"Hero '{hero_name}' not found. Crime not added.")
+
+    def list_crimes(self, by=None, value=None):
+        if by and value:
+            return [crime for crime in self.crimes if crime.get(by) == value]
+        return self.crimes
+
+    def hide_crime(self, crime_name):
+        for crime in self.crimes:
+            if crime["crime_name"] == crime_name:
+                crime["hidden"] = True
+                print(f"Crime '{crime_name}' has been hidden.")
+                return
+        print(f"Crime '{crime_name}' not found.")
+
+    def add_mission(self, mission_name, description, difficulty, heroes_assigned, result=None, reward=None):
+        mission = {
+            "mission_name": mission_name,
+            "description": description,
+            "difficulty": difficulty,
+            "heroes_assigned": heroes_assigned,
+            "result": result,
+            "reward": reward,
+        }
+        self.missions.append(mission)
+        print(f"Mission '{mission_name}' added.")
+
+    def list_missions(self, by=None, value=None):
+        if by and value:
+            return [mission for mission in self.missions if mission.get(by) == value]
+        return self.missions
+
+    def complete_mission(self, mission_name, result):
+        for mission in self.missions:
+            if mission["mission_name"] == mission_name:
+                mission["result"] = result
+                reward = mission.get("reward", {})
+                for hero in mission["heroes_assigned"]:
+                    if hero in self.heroes:
+                        if result == "Sucesso":
+                            self.heroes[hero]["strength"] += reward.get("strength", 0)
+                            self.heroes[hero]["popularity"] += reward.get("popularity", 0)
+                        elif result == "Fracasso":
+                            self.heroes[hero]["strength"] = max(0, self.heroes[hero]["strength"] - reward.get("strength", 0))
+                            self.heroes[hero]["popularity"] = max(0, self.heroes[hero]["popularity"] - reward.get("popularity", 0))
+                print(f"Mission '{mission_name}' marked as {result}.")
+                return
+        print(f"Mission '{mission_name}' not found.")
+
+    def simulate_battle(self, hero1_name, hero2_name):
+        """
+        Simula uma batalha entre dois heróis considerando força, popularidade e fatores aleatórios.
+
+        Parâmetros:
+        - hero1_name (str): Nome do primeiro herói.
+        - hero2_name (str): Nome do segundo herói.
+
+        Funcionamento:
+        - Calcula uma pontuação para cada herói baseada em:
+          - Força: Valor fixo associado ao herói.
+          - Popularidade: Um bônus percentual com base no apoio do público.
+          - Aleatoriedade: Fator aleatório que simula variações de desempenho.
+        - Determina o vencedor comparando as pontuações.
+        - Ajusta a popularidade de ambos os heróis (aumentos ou reduções aleatórias).
+        - Atualiza o histórico de vitórias e derrotas de cada herói.
+
+        Relatório:
+        - Exibe o vencedor da batalha ou informa se houve empate.
+        - Mostra o desempenho de cada herói (força, popularidade, histórico atualizado).
+
+        Retorna:
+        None
+        """
+        import random
+
+        if hero1_name not in self.heroes or hero2_name not in self.heroes:
+            print("One or both heroes not found in the database.")
+            return
+
+        hero1 = self.heroes[hero1_name]
+        hero2 = self.heroes[hero2_name]
+
+        # Calculate battle scores
+        hero1_score = hero1["strength"] * (1 + hero1["popularity"] / 100) * random.uniform(0.8, 1.2)
+        hero2_score = hero2["strength"] * (1 + hero2["popularity"] / 100) * random.uniform(0.8, 1.2)
+
+        # Determine winner
+        if hero1_score > hero2_score:
+            hero1["battle_history"]["wins"] += 1
+            hero2["battle_history"]["losses"] += 1
+            print(f"{hero1_name} wins the battle against {hero2_name}!")
+        elif hero2_score > hero1_score:
+            hero2["battle_history"]["wins"] += 1
+            hero1["battle_history"]["losses"] += 1
+            print(f"{hero2_name} wins the battle against {hero1_name}!")
+        else:
+            print(f"The battle between {hero1_name} and {hero2_name} ends in a draw!")
+
+        # Adjust popularity
+        hero1["popularity"] = max(0, min(100, hero1["popularity"] + random.randint(-5, 5)))
+        hero2["popularity"] = max(0, min(100, hero2["popularity"] + random.randint(-5, 5)))
+
+        # Print battle report
+        print("\nBattle Report:")
+        print(f"{hero1_name}: Strength={hero1['strength']}, Popularity={hero1['popularity']}, Wins={hero1['battle_history']['wins']}, Losses={hero1['battle_history']['losses']}")
+        print(f"{hero2_name}: Strength={hero2['strength']}, Popularity={hero2['popularity']}, Wins={hero2['battle_history']['wins']}, Losses={hero2['battle_history']['losses']}\n")
+
+# Instanciando o banco de dados de heróis
+heroes_db = HeroDatabase()
+
+# Adicionando alguns heróis de "The Boys"
+heroes_db.add_hero(
+    name="Homelander",
+    age=35,
+    sex="Male",
+    physical_features="Tall, blonde",
+    powers=["Flight", "Laser eyes", "Super strength"],
+    strength=95,
+    popularity=85,
+    status="Ativo",
+    wins=10,
+    losses=1
+)
+
+heroes_db.add_hero(
+    name="Starlight",
+    age=26,
+    sex="Female",
+    physical_features="Blonde, glowing eyes",
+    powers=["Light manipulation", "Super strength"],
+    strength=80,
+    popularity=90,
+    status="Ativo",
+    wins=8,
+    losses=2
+)
+
+heroes_db.add_hero(
+    name="The Deep",
+    age=30,
+    sex="Male",
+    physical_features="Brown hair, fit",
+    powers=["Underwater breathing", "Talk to sea creatures"],
+    strength=50,
+    popularity=30,
+    status="Ativo",
+    wins=2,
+    losses=5
+)
+
+heroes_db.add_hero(
+    name="A-Train",
+    age=28,
+    sex="Male",
+    physical_features="Short, muscular",
+    powers=["Super speed"],
+    strength=70,
+    popularity=65,
+    status="Ativo",
+    wins=15,
+    losses=3
+)
+
+heroes_db.add_hero(
+    name="Queen Maeve",
+    age=33,
+    sex="Female",
+    physical_features="Tall, red-haired",
+    powers=["Super strength", "Durability"],
+    strength=85,
+    popularity=80,
+    status="Ativo",
+    wins=12,
+    losses=2
+)
+
+# Adicionando crimes
+heroes_db.add_crime("Collateral Damage", "Destroyed a building during a fight.", "2024-12-01", "Homelander", severity=8)
+heroes_db.add_crime("Reckless Behavior", "Endangered civilians with unnecessary risks.", "2024-11-15", "The Deep", severity=5)
+
+# Adicionando missões
+heroes_db.add_mission(
+    mission_name="Rescue Civilians",
+    description="Save civilians trapped in a burning building.",
+    difficulty=7,
+    heroes_assigned=["Starlight", "The Deep"],
+    reward={"strength": 5, "popularity": 10}
+)
+
+heroes_db.add_mission(
+    mission_name="Stop Bank Robbery",
+    description="Prevent robbers from escaping with money.",
+    difficulty=5,
+    heroes_assigned=["Homelander"],
+    reward={"strength": 3, "popularity": 8}
+)
+
+# Listando missões
+print("\nTodas as missões registradas:")
+print(heroes_db.list_missions())
+
+# Concluindo uma missão
+heroes_db.complete_mission("Rescue Civilians", "Sucesso")
+
+print("\nMissões após conclusão:")
+print(heroes_db.list_missions())
+
+# Exemplo de uso
+print("\nTodos os heróis cadastrados:")
+print(heroes_db.list_heroes())
+
+print("\nVisualizando informações do Homelander:")
+print(heroes_db.view_hero("Homelander"))
+
+print("\nModificando popularidade do Deep:")
+heroes_db.modify_hero("The Deep", popularity=10)
+
+print("\nVisualizando informações do Deep após modificação:")
+print(heroes_db.view_hero("The Deep"))
+
+print("\nRemovendo o Starlight:")
+heroes_db.remove_hero("Starlight")
+
+print("\nTodos os heróis restantes:")
+print(heroes_db.list_heroes())
+
+# Simulando uma batalha
+print("\nSimulando uma batalha entre Homelander e Queen Maeve:")
+heroes_db.simulate_battle("Homelander", "Queen Maeve")
